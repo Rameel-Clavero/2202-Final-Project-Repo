@@ -35,7 +35,7 @@ In addition to the components contained in the Lab Kit, the following equipment 
 
 ## MSEbot Assembly
 
-Assembly instructions to complete the MSEbot are outlined in [MSEbot Build Instructions—Part 2](docs/MSEbot_build_part2.pdf). All of the build steps are also demonstrated the video below. The video walks through the assembly process with live-action tips and demonstrations. For this reason, it recommended that, in addition to carefully reading the instructions, the video be watched far enough ahead to ensure that all of the relevant information and guidance has been viewed for each step.
+Assembly instructions to complete the MSEbot are outlined in [MSEbot Build Instructions—Part 2](docs/MSEbot_Build_Part2.pdf). All of the build steps are also demonstrated the video below. The video walks through the assembly process with live-action tips and demonstrations. For this reason, it recommended that, in addition to carefully reading the instructions, the video be watched far enough ahead to ensure that all of the relevant information and guidance has been viewed for each step.
 
 [![MSEbot Assembly—Part 2](https://img.youtube.com/vi/ek9rCtSRI8U/0.jpg)](https://www.youtube.com/watch?v=ek9rCtSRI8U "MSEbot Assembly—Part 2")
 
