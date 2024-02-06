@@ -78,7 +78,7 @@ The assembled MSEbot should resemble the one shown below:
 
 The IR beacon that was constructed in [Lab 1](https://github.com/MSE2202/Lab1/blob/main/docs/IR-beacon-assembly.md) will be integrated into a simple stand that will irradiate a ping pong ball, allowing it to be localized by the MSEbot. The complete build is demonstrated in the following video.
 
-[![Ping Bong Ball Beacon Assembly](https://img.youtube.com/vi//0.jpg)](https://youtu.be/ "Ping Pong Ball Beacon Assembly")
+[![Ping Bong Ball Beacon Assembly](https://img.youtube.com/vi/euuwHGqVAXE/0.jpg)](https://youtu.be/euuwHGqVAXE "Ping Pong Ball Beacon Assembly")
 
 1. Cut a square that is approximately 45 mm on each side from the remnants of the card stock from Components 14 and 16.
 
