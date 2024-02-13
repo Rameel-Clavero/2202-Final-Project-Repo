@@ -77,9 +77,9 @@ const int cMaxPWM = pow(2, cPWMRes) - 1;                                       /
 // IMPORTANT: The constants in this section need to be set to appropriate values for your robot. 
 //            You will have to experiment to determine appropriate values.
 
-const int cClawServoOpen = 1000;                                               // Value for open position of claw
-const int cClawServoClosed = 2150;                                             // Value for closed position of claw
-const int cArmServoUp = 2200;                                                  // Value for shoulder of arm fully up
+const int cClawServoOpen = 1200;                                               // Value for open position of claw
+const int cClawServoClosed = 2100;                                             // Value for closed position of claw
+const int cArmServoUp = 2100;                                                  // Value for shoulder of arm fully up
 const int cArmServoDown = 1000;                                                // Value for shoulder of arm fully down
 const int cLeftAdjust = -15;                                                     // Amount to slow down left motor relative to right
 const int cRightAdjust = 0;                                                    // Amount to slow down right motor relative to left
@@ -110,8 +110,12 @@ double distance = 0;    // Used for driving forward
 int PreviousIRReadings = 0;      // Used to store old IR readings
 int oldestIRReading = 0;     // used to store the time of the oldest IR reading
 bool honed = true;        // Used to determine if the bot is lined up (honed) with the beacon
-unsigned long lastprint = 0;
-int uCount = 0;
+unsigned long lastprint = 0;     // Used in IR detector timer
+int uCount = 0;         // Used to see if on the IR beacon
+int direction = 0;      // Used for honing
+
+int lspeed = 206;    // Standard left driving speed
+int rspeed = 200;    // Standard right driving speed
 
 // Declare SK6812 SMART LED object
 //   Argument 1 = Number of LEDs (pixels) in use
@@ -248,14 +252,19 @@ void loop() {
             RightEncoder.clearEncoder();
             driveIndex = 0;                                                    // reset drive index
             timeUp2sec = false;                                                // reset 2 second timer
+            leftDriveSpeed = lspeed;      // Set driving speeds to Standard speed
+            rightDriveSpeed = rspeed;     // Set driving speeds to Standard speed
             break;
 
          case 1: // Run robot
             if (timeUp3sec) {                                                  // pause for 3 sec before running case 1 code
                // Read pot to update drive motor speed
                pot = analogRead(POT_R1);
-               leftDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cLeftAdjust;
-               rightDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cRightAdjust;
+               //leftDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cLeftAdjust;
+               //rightDriveSpeed = map(pot, 0, 4095, cMinPWM, cMaxPWM) - cRightAdjust;
+
+               // left and right are reversed
+               
 #ifdef DEBUG_DRIVE_SPEED 
                Serial.print(F(" Left Drive Speed: Pot R1 = "));
                Serial.print(pot);
@@ -280,13 +289,13 @@ void loop() {
                            Bot.Stop("D1");                                     // drive ID
                            driveIndex++;                                        // next state: drive forward
                            // Left encoder counts up
-                           distance = cmToEncoderPulses(57) + LeftEncoder.lRawEncoderCount;   // Enough distance to center axel at page
+                           distance = cmToEncoderPulses(48) + LeftEncoder.lRawEncoderCount;   // Enough distance to center axel at page
                            break;
 
-                        case 1: // Drive forward
+                        case 1: // Drive forward to corner
                            Serial.println("drive forward");
                            // Will repeat while left encoder is smaller than it needs to be
-                           // Only using left as wheels should be turning at the same space - may ned pid
+                           // Only using left as wheels should be turning at the same space
                            if(LeftEncoder.lRawEncoderCount <= distance){
                               Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); // drive ID, left speed, right speed
                            }else{
@@ -296,10 +305,9 @@ void loop() {
                            break;
 
                         case 2: // Allign arm to right height
-                           //Bot.Reverse("D1", leftDriveSpeed, rightDriveSpeed); // drive ID, left speed, right speed
                            Bot.ToPosition("S2",cArmServoDown);                         // update shoulder servo position to see beacon
                            driveIndex++;                                       // next state: turn left
-                           distance = LeftEncoder.lRawEncoderCount - cmToEncoderPulses(1/4*2*3.14*5);
+                           distance = LeftEncoder.lRawEncoderCount - cmToEncoderPulses(2*3.14*5/4-1);    // Set distance for left turn
                            break;
 
                         case 3: // Turn left
@@ -308,135 +316,175 @@ void loop() {
                         // Easier to pair only to left wheel 
                         // Turn left until the bot has gone 90 degrees
                         if(LeftEncoder.lRawEncoderCount >= distance){
-                           Bot.Left("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
+                           Bot.Right("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
                         }else{
+                           // Go to next drive index
                            driveIndex++;
-                           distance = cmToEncoderPulses(54)+LeftEncoder.lRawEncoderCount;
+                           // Set distance to go to end of next page
+                           distance = cmToEncoderPulses(24)+LeftEncoder.lRawEncoderCount;
                         }
-
-                        /*
-                        // Keep turning while robot isnt seeing U
-                        if(!Scan.Available()){
-                              Bot.Left("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
-                           }else{
-                              Bot.Stop("D1");
-                              driveIndex++;                                       // next state: go forward
-                              distance = cmToEncoderPulses(54)+LeftEncoder.lRawEncoderCount;
-                        
-                        } 
-                        */
-                        
                            break;
 
-                        case 4: // Go forward and keep claw in line with beacon
+                        case 4: // Go forward to end of next page
+                           if(distance >= LeftEncoder.lRawEncoderCount){
+                              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); // drive ID, left speed, right speed
+                           }else{
+                                 // Stop bot
+                                 Bot.Stop("D1");
+                                 // Go to next drive index
+                                 driveIndex++;
+                                 // Set distance to sweep to the left
+                                 distance = LeftEncoder.lRawEncoderCount - cmToEncoderPulses(3);
+                                 // Reset 2 second timer Variables
+                                 timerCount2sec = 0;
+                                 timeUp2sec = false;
+                                 // Lower driving speeds
+                                 rightDriveSpeed = 150;
+                                 leftDriveSpeed = 153;
+
+                           }
+                           break;
+                           case 5:     // hone at the end of the last page
+                           if (Scan.Available()) {                                            // if data is received
+                                 //Serial.println(Scan.Get_IR_Data());
+                                 //Serial.println((int)Scan.Get_IR_Data());                              // output received data to serial
+                              if((int)Scan.Get_IR_Data()>0){     // If the reading is a any data, increment
+                                 uCount++;
+                              }
+                              }
+                              // After each second, display the reading and reset for the next reading
+                              // repeat every 250 ms
+                              if(millis() - lastprint >= 250){
+                                 lastprint = millis();
+                                 Serial.printf(" U/s = %d\n",uCount);   // Print current IR input
+                                 if(uCount < 2){// When we can't see the beam
+                                    if(direction == 0){  // Turn to the left
+                                       Serial.println("turn left");
+                                       // Go slow
+                                       Serial.printf("left and right speed %d, %d\n",leftDriveSpeed,rightDriveSpeed);
+                                       Bot.Right("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
+                                    }// When sweeped far enough, switch the direction
+                                    if(LeftEncoder.lRawEncoderCount <= distance && direction ==0){
+                                       direction = 1;
+                                       // Set distance to sweep to the right
+                                       distance = LeftEncoder.lRawEncoderCount + cmToEncoderPulses(3);
+                                    }// Turn to the right
+                                    if(direction == 1){
+                                       Serial.println("Turn right");
+                                       Bot.Left("D1",leftDriveSpeed,rightDriveSpeed);
+                                    }// Set distance to sweep to the left again
+                                    if(LeftEncoder.lRawEncoderCount >= distance && direction ==1){
+                                       direction = 0;
+                                       distance = LeftEncoder.lRawEncoderCount - cmToEncoderPulses(3);
+                                    }
+                                    // When beacon is seen, stop robot and go to the next case
+                                 }else{
+                                    Bot.Stop("D1");
+                                    driveIndex ++;
+                                    // Set distance for going to the beacon
+                                    distance = cmToEncoderPulses(21)+LeftEncoder.lRawEncoderCount;
+                                    direction = 0;
+                                    // Increase speed
+                                    rightDriveSpeed = rspeed-20;
+                                    leftDriveSpeed = lspeed-20;
+
+                                 }
+                                 // Reset Variable for loop 
+                                 uCount = 0;
+                              }
+                           break;
+                           case 6:  // Go to the end
+                           // Go forward until encoder reads far enough
                            if(distance >= LeftEncoder.lRawEncoderCount){
                               Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); // drive ID, left speed, right speed
                            }else{
                                  Bot.Stop("D1");
+                                 // go to next case
                                  driveIndex++;
-                                 // Close gripper all the way
-                                 Bot.ToPosition("S1", cClawServoClosed);                             // update claw servo position
-                                 Serial.print("claw closed");
-                                 timerCount2sec = 0;
-                                 timeUp2sec = false;
+                                 // Restore speeds to origional values
+                                 rightDriveSpeed = rspeed;
+                                 leftDriveSpeed = lspeed;
+
                            }
-
-                        /*
-                           Serial.print("go forward and hone\n");
-                           // returns false if no reading, and the value if there is one
-                           if(Scan.Available()){
-                              Serial.print("scan is available");
-                              if(PreviousIRReadings == 0){
-                                 oldestIRReading = millis();
-                              }
-                              PreviousIRReadings++;
-                           }
-                           // Checks if the readings happened fast enough
-                           if(PreviousIRReadings == 20){
-                              // If we achieved 20 readings in 2 seconds, go forward
-
-                              // really easy to hit
-                              if(millis()-oldestIRReading <= 5000){
-                                 honed = true;
-                              }else{
-                                 // If failed, reset parameters and try again
-                                 honed = false;
-                                 PreviousIRReadings = 0;
-                                 oldestIRReading = 0;
-                                 // Set the timers for later use
-                                 timerCount2sec = 0;
-                                 timeUp2sec = false;
-                              }
-                           }// If lined up, continue driving forward
-                           if(honed){
-                              if(distance >= LeftEncoder.lRawEncoderCount){
-                                 // Add distance counter here 
-                              Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); // drive ID, left speed, right speed
-                              }else{
-                                 Bot.Stop("D1");
-                                 driveIndex++;
-                              }
-                              
-                           }else{
-                              // Testing
-                              Serial.print("searching for IR beacon");
-
-                              // Keep moving until honed again - assume arm is at good enough height
-                                 Bot.Right("D1", leftDriveSpeed, rightDriveSpeed);   // drive ID, left speed, right speed
-                           }                           
-                           
-                           // to know when to grab the ball, need to use distance forward or maybe when ir detector gets really good signal
-                           // When gone far enough, incriment drive index
-                           //driveIndex = 0;                                     // next state: stop
-                           */
                            break;
-                           case 5:
-                           // Raise arm all the way up
+                           case 7:  // Close gripper and raise arm after 2 seconds
+                              Bot.ToPosition("S1", cClawServoClosed);                             // update claw servo position
+                              Serial.print("claw closed");
+                           Serial.println("Raise arm");
+                           // Raise arm most of the way up
                            if(timeUp2sec){
-                              Bot.ToPosition("S2", cArmServoUp);                         // update shoulder servo position
+                              Bot.ToPosition("S2", cArmServoUp-400);                         // update shoulder servo position
+                              // Set distance to turn 180 degrees
+                              distance = LeftEncoder.lRawEncoderCount - cmToEncoderPulses(2*3.14*5/2-1);
+                              // Go to the next case
                               driveIndex++;
-                              distance = LeftEncoder.lRawEncoderCount - cmToEncoderPulses(1/2*2*3.14*5);
                            }
                            // drive back to start position
                            // incriment drive mode
                            break;
 
-                           case 6:// Turn 180 degrees
+                           case 8:// Turn 180 degrees
+                           Serial.println("turn 180 degrees");
+                           // Keep turning until encoder has gone far enough
                               if(LeftEncoder.lRawEncoderCount >= distance){
-                              Bot.Left("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
+                              Bot.Right("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
                            }else{
+                              // When done, go to the next index
                               driveIndex++;
-                              distance = cmToEncoderPulses(54)+LeftEncoder.lRawEncoderCount;
+                              // Set distance to go to the corner
+                              distance = cmToEncoderPulses(48)+LeftEncoder.lRawEncoderCount;
                            }
                            break;
                            
-                           case 7:  // Drive back to corner
+                           case 9:  // Drive back to corner
+                           // Drive forward until encoder has gone far enough
                            if(distance >= LeftEncoder.lRawEncoderCount){
                               Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); // drive ID, left speed, right speed
                            }else{
                                  Bot.Stop("D1");
+                                 // go to the next case
                                  driveIndex++;
-                                 distance = LeftEncoder.lRawEncoderCount + cmToEncoderPulses(1/4*2*3.14*5);
+                                 // Set distance to turn 90 degrees to the right
+                                 distance = LeftEncoder.lRawEncoderCount + cmToEncoderPulses(2*3.14*5/4-1);
                            }
                            break;
-                           case 8:  // Drive turn right
+                           case 10:  // Drive turn right
+                           // Repeat until encoder has gone far enough
                            if(LeftEncoder.lRawEncoderCount <= distance){
-                              Bot.Right("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
+                              Bot.Left("D1", leftDriveSpeed, rightDriveSpeed);    // drive ID, left speed, right speed
                            }else{
+                              // Go to the next case
                               driveIndex++;
-                              distance = LeftEncoder.lRawEncoderCount - cmToEncoderPulses(1/4*2*3.14*5);
+                              // Set distance to go to the begining of the track
+                              distance = cmToEncoderPulses(37)+LeftEncoder.lRawEncoderCount;
                            }
                         
                            break;
-                           case 9:    // Drive straight
+                           case 11:    // Drive straight
+                           // Repeat until encoder has gone far enough
                            if(distance >= LeftEncoder.lRawEncoderCount){
                               Bot.Forward("D1", leftDriveSpeed, rightDriveSpeed); // drive ID, left speed, right speed
                            }else{
                                  Bot.Stop("D1");
-                                 driveIndex = 0;
-                                 robotModeIndex = 0;
-                                 Bot.ToPosition("S1", cClawServoOpen);                             // update claw servo position
+                                 // Go to the next case
+                                 driveIndex++;
+                                 // reset 2 second timer
+                                 timerCount2sec = 0;
+                                 timeUp2sec = false;
+
                            }
+                           break;
+                           case 12: // Open the grippers and move arm up and down to release ball
+                           Bot.ToPosition("S1", cClawServoOpen);                             // update claw servo position
+                           Bot.ToPosition("S2", cArmServoDown);                         // update shoulder servo position
+                           // After 2 seconds , raise arm and leave drive mode
+                           if(timeUp2sec){
+                              Bot.ToPosition("S2", cArmServoUp);                         // update shoulder servo position
+                              robotModeIndex = 0;
+                              // Reset drive index if need to be used again
+                              driveIndex = 0;
+                           }
+                           
                            break;
                      
                      }
@@ -454,13 +502,14 @@ void loop() {
             if (Scan.Available()) {                                            // if data is received
                //Serial.println(Scan.Get_IR_Data());
                //Serial.println((int)Scan.Get_IR_Data());                              // output received data to serial
-              if((int)Scan.Get_IR_Data()==85){     // If the reading is a U, increment
+              if((int)Scan.Get_IR_Data()>0){     // If the reading is a U, increment
                uCount++;
               }
             }
             // After each second, display the reading and reset for the next reading
-            if(millis() - lastprint >= 1000){
+            if(millis() - lastprint >= 250){
                lastprint = millis();
+               // Print number of IR detections per 1/4 of a second
                Serial.printf(" U/s = %d\n",uCount);
                uCount = 0;
             }
@@ -530,5 +579,3 @@ double cmToEncoderPulses(double a){
 // 0 = false, 1 = true
 int honeIR(int* PreviousIRReadings){
 }
-
-// Add pid - test in lab 3 first as its more simple
