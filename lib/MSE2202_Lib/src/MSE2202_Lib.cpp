@@ -27,7 +27,7 @@ unsigned char Motion::Get_LEDcChannel()
 	
 	uc_NewChannel = ucLEDcLastUnUsedChannel;
 	ucLEDcLastUnUsedChannel++;
-	if(ucLEDcLastUnUsedChannel >= LEDCMAXCHANNELS)
+	if(ucLEDcLastUnUsedChannel > LEDCMAXCHANNELS)
 	{
 		return(100);
 	}
@@ -35,18 +35,20 @@ unsigned char Motion::Get_LEDcChannel()
 	
 }
 
-void Motion::driveBegin(char cDriveID[2], int iLeftMotorPin1, int iLeftMotorPin2,int iRightMotorPin1, int iRightMotorPin2)
+void Motion::driveBegin(const char cDriveID[2], int iLeftMotorPin1, int iLeftMotorPin2,int iRightMotorPin1, int iRightMotorPin2)
 {
 	char c_driveID; 
 	
 	if((cDriveID[0] == 'd') || (cDriveID[0] == 'D'))
 	{
 		if(cDriveID[1] == '1')
-		{
+		{	
+			//Serial.println("hit drive one");
 			c_driveID = 1;
 		}
 		else if(cDriveID[1] == '2')
 		{
+			//Serial.println("hit drive two");
 			c_driveID = 2;
 		}
 		else
@@ -56,6 +58,7 @@ void Motion::driveBegin(char cDriveID[2], int iLeftMotorPin1, int iLeftMotorPin2
 	
 		//setup PWM for motors
 		ucLEDcDriveChannels[(c_driveID * 4) - 4] = Get_LEDcChannel();
+
 		ledcAttachPin(iLeftMotorPin1, ucLEDcDriveChannels[0]); // assign Motors pins to channels
 		 // Initialize channels 
 	  // channels 0-15, resolution 1-16 bits, freq limits depend on resolution
@@ -73,6 +76,11 @@ void Motion::driveBegin(char cDriveID[2], int iLeftMotorPin1, int iLeftMotorPin2
 		ucLEDcDriveChannels[(c_driveID * 4) - 1] = Get_LEDcChannel();
 		ledcAttachPin(iRightMotorPin2, ucLEDcDriveChannels[3]);
 		ledcSetup(ucLEDcDriveChannels[(c_driveID * 4) - 1], 20000, 8);
+
+		//for (int i = 0; i < 8; i++) {
+            //Serial.print(ucLEDcDriveChannels[i]);
+            //Serial.println(" ");
+        //}
 	}
 	else
 	{
@@ -80,44 +88,33 @@ void Motion::driveBegin(char cDriveID[2], int iLeftMotorPin1, int iLeftMotorPin2
 	}
 }
 
-void Motion::motorBegin(char cMotorID[2], int iMotorPin1, int iMotorPin2)
+void Motion::motorBegin(const char cMotorID[2], int iMotorPin1, int iMotorPin2)
 {
 	char c_motorID; 
 	
 	if((cMotorID[0] == 'M') || (cMotorID[0] == 'M'))
 	{
-		if((cMotorID[1] >= '1') &&  (cMotorID[1] <= '4'))
-		{
-			c_motorID = cMotorID[1] - 0x30;
-		}
-		else 
-		{
-			Serial.printf("Incorrect ID Designator number %s\n", cMotorID);
-		}
-		//setup PWM for motors
-		ucLEDcMotorChannels[(c_motorID * 2) - 2] = Get_LEDcChannel();
-		ledcAttachPin(iMotorPin1, ucLEDcMotorChannels[0]); // assign Motors pins to channels
-		 // Initialize channels 
-	  // channels 0-15, resolution 1-16 bits, freq limits depend on resolution
-	  // ledcSetup(uint8_t channel, uint32_t freq, uint8_t resolution_bits);
-		ledcSetup(ucLEDcMotorChannels[(c_motorID * 2) - 2], 20000, 8); // 20mS PWM, 8-bit resolution
-		
-		ucLEDcMotorChannels[(c_motorID * 2) - 1] = Get_LEDcChannel();
-		ledcAttachPin(iMotorPin2, ucLEDcMotorChannels[1]);
-		ledcSetup(ucLEDcMotorChannels[(c_motorID * 2) - 1], 20000, 8);
-		
+		int c_motorID_index = cMotorID[1] - '1'; // Convert 'M1'-'M4' to 0-3 index
+    if(c_motorID_index < 0 || c_motorID_index > 3) {
+        Serial.printf("Incorrect ID Designator number %s\n", cMotorID);
+        return;
+    }
+    // Setup PWM for motors
+    ucLEDcMotorChannels[c_motorID_index * 2] = Get_LEDcChannel();
+    ledcAttachPin(iMotorPin1, ucLEDcMotorChannels[c_motorID_index * 2]); // Assign Motors pins to channels
+    ledcSetup(ucLEDcMotorChannels[c_motorID_index * 2], 20000, 8); // 20ms PWM, 8-bit resolution
 
-		
+    ucLEDcMotorChannels[c_motorID_index * 2 + 1] = Get_LEDcChannel();
+    ledcAttachPin(iMotorPin2, ucLEDcMotorChannels[c_motorID_index * 2 + 1]);
+    ledcSetup(ucLEDcMotorChannels[c_motorID_index * 2 + 1], 20000, 8);	
 	}
 	else
 	{
 		Serial.printf("Incorrect ID Designator %s\n", cMotorID);
 	}
-	
-	
 }
 
-void Motion::servoBegin(char cServoID[2], int iServoPin1)
+void Motion::servoBegin(const char cServoID[2], int iServoPin1)
 {
 	
 	char c_servoID; 
@@ -146,7 +143,7 @@ void Motion::servoBegin(char cServoID[2], int iServoPin1)
 	}
 }
 
-void Motion::ToPosition(char cID[2], unsigned int uiServoPosition)
+void Motion::ToPosition(const char cID[2], unsigned int uiServoPosition)
 {
 	char c_ID; 
 	
@@ -172,12 +169,11 @@ void Motion::ToPosition(char cID[2], unsigned int uiServoPosition)
 			Serial.printf("Incorrect ID Designator %s\n", cID);
 		}
 	}
-	
 }
 
 
 
-void Motion::Forward(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
+void Motion::Forward(const char cID[2], unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
 {
 	 char c_ID; 
 	
@@ -214,11 +210,10 @@ void Motion::Forward(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRight
 			Serial.printf("Incorrect ID Designator %s\n", cID);
 		}
 	}
-		
 }
 
 
-void Motion::Reverse(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
+void Motion::Reverse(const char cID[2], unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
 {
 	 char c_ID; 
 	
@@ -256,11 +251,10 @@ void Motion::Reverse(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRight
 			Serial.printf("Incorrect ID Designator %s\n", cID);
 		}
 	}
-	
 }
 
 
-void Motion::Left(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
+void Motion::Left(const char cID[2], unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
 {
 	char c_ID; 
 	
@@ -298,11 +292,10 @@ void Motion::Left(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRightSpe
 			Serial.printf("Incorrect ID Designator %s\n", cID);
 		}
 	}
-	
 }
 
 
-void Motion::Right(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
+void Motion::Right(const char cID[2], unsigned char ucLeftSpeed,unsigned char ucRightSpeed)
 {
 	char c_ID; 
 	
@@ -340,9 +333,9 @@ void Motion::Right(char cID[2],unsigned char ucLeftSpeed,unsigned char ucRightSp
 			Serial.printf("Incorrect ID Designator %s\n", cID);
 		}
 	}
-	
 }
-void Motion::Stop(char cID[2])
+
+void Motion::Stop(const char cID[2])
 {
 	 char c_ID; 
 	
@@ -394,7 +387,6 @@ void Motion::Stop(char cID[2])
 			Serial.printf("Incorrect ID Designator %s\n", cID);
 		}
 	}
-	
 }
 
 
@@ -404,8 +396,6 @@ void Motion::end()
 	{
 		ledcWrite(ucLEDcDriveChannels[ucLEDcIndex],0);
 	}
-	
-	
 	ucLEDcLastUnUsedChannel = 0; 
 }
 
@@ -555,3 +545,31 @@ void IR::end()
  {
 	
  }
+
+ // My functions
+ void Motion::SetMotorPWMAndDirection(const char* cMotorID, int speed, bool direction) {
+    int motorIndex = cMotorID[1] - '1'; // Convert 'M1'-'M4' to 0-3 index
+    if (motorIndex < 0 || motorIndex > 3) {
+        Serial.println("Invalid motor ID");
+        return;
+    }
+	// Convert make the right side drive the same direction as the left
+	if(motorIndex == 0 || motorIndex == 3){
+		direction = !direction;
+	}
+
+    // Assuming ucLEDcMotorChannels[] array is defined and populated correctly
+    // during motorBegin() with 2 channels per motor for forward and reverse control.
+    int pwmChannelForward = ucLEDcMotorChannels[motorIndex * 2];
+    int pwmChannelReverse = ucLEDcMotorChannels[motorIndex * 2 + 1];
+
+	//Serial.printf("forward %d reverse %d \n",pwmChannelForward,pwmChannelReverse);
+
+    if(direction) { // Assuming true for forward
+        ledcWrite(pwmChannelForward, speed);
+        ledcWrite(pwmChannelReverse, 0); // Stop reverse direction
+    } else {
+        ledcWrite(pwmChannelForward, 0); // Stop forward direction
+        ledcWrite(pwmChannelReverse, speed);
+    }
+}
