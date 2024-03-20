@@ -47,6 +47,11 @@
 // Function declarations
 void calculatePID(long targetSpeed,float deltaT,int motorNumber);
 void calculateSpeed();
+void botForward();
+void botReverse();
+void botStop();
+void botLeft();
+void botRight();
 
 
 // Port pin constants
@@ -90,7 +95,7 @@ boolean timeUp2sec = false;                                                    /
 boolean timeUp200msec = false;                                                 // 200 millisecond timer elapsed flag
 unsigned char leftDriveSpeed;                                                  // motor drive speed (0-255)
 unsigned char rightDriveSpeed;                                                 // motor drive speed (0-255)
-unsigned char driveIndex;                                                      // state index for run mode
+unsigned char driveIndex = 0;                                                      // state index for run mode
 unsigned int modePBDebounce;                                                   // pushbutton debounce timer count
 unsigned int potClawSetpoint;                                                  // desired position of claw servo read from pot
 unsigned int potShoulderSetpoint;                                              // desired position of shoulder servo read from pot
@@ -123,6 +128,8 @@ unsigned long lastSpeedCalculation = 0;
 const unsigned long speedCalculationInterval = 100; // Calculate speed every 100 ms
 long previousEncoderCounts[4] = {0, 0, 0, 0}; // Store previous counts for all four motors
 float wheelSpeeds[4] = {0.0, 0.0, 0.0, 0.0}; // Speeds of each wheel
+
+float deltaT = 0;
 
 
 // Declare SK6812 SMART LED object
@@ -162,13 +169,17 @@ void setup() {
    // Front M1    M2
    // Rear  M3    M4
 
-   Bot.motorBegin("M4",LEFT_MOTOR_C,LEFT_MOTOR_D);
-   Bot.motorBegin("M2",LEFT_MOTOR_A,LEFT_MOTOR_B);
-   Bot.motorBegin("M3",RIGHT_MOTOR_C,RIGHT_MOTOR_D);
-   Bot.motorBegin("M1",RIGHT_MOTOR_A,RIGHT_MOTOR_B);
    
-  
+   Bot.motorBegin("M3",LEFT_MOTOR_C,LEFT_MOTOR_D);
+   Bot.motorBegin("M1",LEFT_MOTOR_A,LEFT_MOTOR_B);
+   Bot.motorBegin("M4",RIGHT_MOTOR_C,RIGHT_MOTOR_D);
+   Bot.motorBegin("M2",RIGHT_MOTOR_A,RIGHT_MOTOR_B);
+   
 
+  //Bot.driveBegin("D1",LEFT_MOTOR_A,LEFT_MOTOR_B,RIGHT_MOTOR_A,RIGHT_MOTOR_B);
+  //Bot.driveBegin("D2",LEFT_MOTOR_C,LEFT_MOTOR_D,RIGHT_MOTOR_C,RIGHT_MOTOR_D);
+
+  
    // Set up encoders
    LeftEncoder.Begin(ENCODER_LEFT_A, ENCODER_LEFT_B, &Bot.iLeftMotorRunning );
    RightEncoder.Begin(ENCODER_RIGHT_A, ENCODER_RIGHT_B, &Bot.iRightMotorRunning);
@@ -179,7 +190,7 @@ void setup() {
 
 void loop() {
    long pos[] = {0, 0};                                                        // current motor positions
-   float deltaT = 0;
+   deltaT = 0;
    long e = 0;
    float dedt = 0;                                  // rate of change of position error (de/dt)
    float eIntegral = 0;                             // integral of error 
@@ -207,44 +218,150 @@ void loop() {
    if (millis() - lastTime > 10) {                // wait ~10 ms
       deltaT = ((float) (millis() - lastTime)) / 1000; // compute actual time interval in seconds
       lastTime = millis();                            // update start time for next control cycle
-      calculatePID(targetSpeed,deltaT,0);
       //       Left  Right
       // Front M1    M2
       // Rear  M3    M4
 
-      // Update the current speed for all wheels
-      calculateSpeed();
 
-      // Calculate all pwm values
-      calculatePID(targetSpeed,deltaT,0);
-      calculatePID(targetSpeed,deltaT,1);
-      calculatePID(targetSpeed,deltaT,2);
-      calculatePID(targetSpeed,deltaT,3);
+      if(timerCount3sec + 3000 < millis()){
+         timeUp3sec = true;
+      }
 
-      // Set motor speeds based on PID value
-      Bot.SetMotorPWMAndDirection("M1",pwm[0],true);
-      Bot.SetMotorPWMAndDirection("M2",pwm[1],true);
-      Bot.SetMotorPWMAndDirection("M3",pwm[2],true);
-      Bot.SetMotorPWMAndDirection("M4",pwm[3],true);
-      // To go backwards, will need to flip the sign of the target speed when entering into calculate PID
+      switch(driveIndex){
 
-      // Still some inconsistancies especially with M4
+      case 0:
+      timeUp3sec = false;
+      timerCount3sec = millis();
+      driveIndex++;
+      break;
+
+      case 1:
+      Serial.println("forward");
+      botForward();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex++;
+      }
+      break;
+
+      case 2:
+      Serial.println("stop");
+      botStop();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex++;
+      }
+      break;
+
+      case 3:
+      Serial.println("reverse");
+      botReverse();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex++;
+      }
+      break;
+
+      case 4:
+      Serial.println("stop");
+      botStop();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex++;
+      }
+      break;
+
+      case 5:
+      Serial.println("Left");
+      botLeft();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex++;
+      }
+      break;
+
+      case 6:
+      Serial.println("Stop");
+      botStop();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex++;
+      }
+      break;
+
+      case 7:
+      Serial.println("right");
+      botRight();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex++;
+      }
+      break;
+
+      case 8:
+      Serial.println("stop");
+      botStop();
+      if(timeUp3sec == true){
+         timeUp3sec = false;
+         timerCount3sec = millis();
+         driveIndex = 0;
+      }
+      break;
+      }
+     
+      
+      // ALL OF MY FUNCTIONS AT THE BOTTOM WORK ON THEIR OWN
+      // ALL MOTORS GO FORWARD AND BACKWARD
+      /*
+      Bot.SetMotorPWMAndDirection("M1",255,false);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M1",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M2",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M2",255,false);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M3",255,false);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M3",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M4",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M4",255,false);
+      */
+
+      //Serial.printf("speed 0 %f, PWM 0 %f\n",wheelSpeeds[0],pwm[0]);
+      //Serial.printf("speed 1 %f, PWM 1 %f\n\n",wheelSpeeds[1],pwm[1]);
    }
 }
 
 
    //       Left  Right
-   // Front 0    2
-   // Rear  3    4
+   // Front 0    1
+   // Rear  2    3
 
    // Final value gets put into pwm array
 void calculatePID(long targetSpeed,float deltaT,int motorNumber){
 // 1200 is a reasonable target speed for now
-   long e = 0;
+   float e = 0;
    float dedt = 0;
    float u = 0;                                     // PID control signal
+   
+
 
    e = targetSpeed - wheelSpeeds[motorNumber];                              // position error
+   // Reverse the error while driving backwards so motors dont stop
+      if(targetSpeed < 0){
+      targetSpeed = targetSpeed*-1;
+      e = e*-1;
+   }
    dedt = ((float) e - ePrev[motorNumber]) / deltaT;           // derivative of error
    eIntegral[motorNumber] += e * deltaT;            // integral of error (finite difference)
    // Set cap for integral
@@ -256,11 +373,10 @@ void calculatePID(long targetSpeed,float deltaT,int motorNumber){
 
 //Serial.printf("integral = %d, u = %f, e = %d, dedt = %f\n",eIntegral[motorNumber], u, e, dedt);
 
-   u = fabs(u); // Ensure the control signal is non-negative
-   if (u > cMaxSpeedInCounts) {
-      u = cMaxSpeedInCounts; // Impose upper limit
-   }
-   pwm[motorNumber] = map(u, 0, cMaxSpeedInCounts, 0, 255); // Map u to PWM range
+   int pwmSignal = map(u, -cMaxSpeedInCounts, cMaxSpeedInCounts, 0, 255); // Assuming symmetric control range for simplification
+   pwmSignal = constrain(pwmSignal, 0, 255); // Ensure PWM signal stays within valid range
+   //Serial.printf("Motor number %d, error %f, pwm %d\n",motorNumber,e,pwmSignal); 
+   pwm[motorNumber] = pwmSignal; // Apply the computed PWM value
    //Serial.printf("PWM has been set to %f\n",pwm[motorNumber]);
 }
 void calculateSpeed() {
@@ -282,6 +398,8 @@ void calculateSpeed() {
         
         // Update the last speed calculation time
         lastSpeedCalculation = currentTime;
+        
+        /*
          Serial.printf("Speeds and pwm: ");
         for (int i = 0; i < 4; i++) {
             Serial.print(wheelSpeeds[i]);
@@ -290,5 +408,73 @@ void calculateSpeed() {
             Serial.print(" ");
         }
         Serial.println();
+        */
+        
     }
+}
+void botForward(){
+      // Update the current speed for all wheels
+      calculateSpeed();
+
+      // Calculate all pwm values
+      calculatePID(targetSpeed,deltaT,0);
+      calculatePID(targetSpeed,deltaT,1);
+      calculatePID(targetSpeed,deltaT,2);
+      calculatePID(targetSpeed,deltaT,3);
+
+      Bot.SetMotorPWMAndDirection("M1",pwm[0],false);
+      Bot.SetMotorPWMAndDirection("M2",pwm[1],true);
+      Bot.SetMotorPWMAndDirection("M3",pwm[2],false);
+      Bot.SetMotorPWMAndDirection("M4",pwm[3],true);
+}
+void botStop(){
+      Bot.SetMotorPWMAndDirection("M1",0,false);
+      Bot.SetMotorPWMAndDirection("M2",0,true);
+      Bot.SetMotorPWMAndDirection("M3",0,false);
+      Bot.SetMotorPWMAndDirection("M4",0,true);
+}
+void botReverse(){
+   // Update the current speed for all wheels
+      calculateSpeed();
+
+      // Calculate all pwm values
+      calculatePID(-targetSpeed,deltaT,0);
+      calculatePID(-targetSpeed,deltaT,1);
+      calculatePID(-targetSpeed,deltaT,2);
+      calculatePID(-targetSpeed,deltaT,3);
+
+      Bot.SetMotorPWMAndDirection("M1",pwm[0],true);
+      Bot.SetMotorPWMAndDirection("M2",pwm[1],false);
+      Bot.SetMotorPWMAndDirection("M3",pwm[2],true);
+      Bot.SetMotorPWMAndDirection("M4",pwm[3],false);
+}
+void botLeft(){
+      // Update the current speed for all wheels
+      calculateSpeed();
+
+      // Calculate all pwm values
+      calculatePID(-targetSpeed,deltaT,0);
+      calculatePID(targetSpeed,deltaT,1);
+      calculatePID(-targetSpeed,deltaT,2);
+      calculatePID(targetSpeed,deltaT,3);
+
+      Bot.SetMotorPWMAndDirection("M1",pwm[0],true);
+      Bot.SetMotorPWMAndDirection("M2",pwm[1],true);
+      Bot.SetMotorPWMAndDirection("M3",pwm[2],true);
+      Bot.SetMotorPWMAndDirection("M4",pwm[3],true);
+}
+void botRight(){
+      // Update the current speed for all wheels
+      calculateSpeed();
+
+      // Calculate all pwm values
+      calculatePID(targetSpeed,deltaT,0);
+      calculatePID(-targetSpeed,deltaT,1);
+      calculatePID(targetSpeed,deltaT,2);
+      calculatePID(-targetSpeed,deltaT,3);
+
+      Bot.SetMotorPWMAndDirection("M1",pwm[0],false);
+      Bot.SetMotorPWMAndDirection("M2",pwm[1],false);
+      Bot.SetMotorPWMAndDirection("M3",pwm[2],false);
+      Bot.SetMotorPWMAndDirection("M4",pwm[3],false);
 }
