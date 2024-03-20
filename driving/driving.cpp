@@ -1,16 +1,3 @@
-/*
-
- MSE 2202 MSEBot base code for Lab 4
- Language: Arduino
- Authors: Eugen Porter and Michael Naish
- 
- Rev 1 - Initial version 2016
- Rev 2 - Update for MSEduino V0.2
- ...
- Rev 4 - revisit for MSEduino V4.2 2023
- Rev 5 - revisit for MSEduino V5.1 2024
-
- */
 
 //  To program and use ESP32-S3
 //   
