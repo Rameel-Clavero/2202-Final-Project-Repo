@@ -553,10 +553,6 @@ void IR::end()
         Serial.println("Invalid motor ID");
         return;
     }
-	// Convert make the right side drive the same direction as the left
-	if(motorIndex == 0 || motorIndex == 3){
-		direction = !direction;
-	}
 
     // Assuming ucLEDcMotorChannels[] array is defined and populated correctly
     // during motorBegin() with 2 channels per motor for forward and reverse control.
