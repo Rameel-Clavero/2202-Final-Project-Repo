@@ -213,6 +213,9 @@ void loop() {
       if(timerCount3sec + 3000 < millis()){
          timeUp3sec = true;
       }
+      if(timerCount200msec + 200<millis()){
+         timeUp200msec = true;
+      }
 
       switch(driveIndex){
 
@@ -226,8 +229,8 @@ void loop() {
       Serial.println("forward");
       botForward();
       if(timeUp3sec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
+         timeUp200msec = false;
+         timerCount200msec = millis();
          driveIndex++;
       }
       break;
@@ -235,7 +238,7 @@ void loop() {
       case 2:
       Serial.println("stop");
       botStop();
-      if(timeUp3sec == true){
+      if(timeUp200msec == true){
          timeUp3sec = false;
          timerCount3sec = millis();
          driveIndex++;
