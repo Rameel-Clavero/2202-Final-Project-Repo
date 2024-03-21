@@ -39,7 +39,7 @@ void botReverse();
 void botStop();
 void botLeft();
 void botRight();
-
+void botMove(char*,int,int*);
 
 // Port pin constants
 #define LEFT_MOTOR_A        35                                                 // GPIO35 pin 28 (J35) Motor 1 A
@@ -72,8 +72,14 @@ const int cDisplayUpdate = 100;                                                /
 const int cPWMRes = 8;                                                         // bit resolution for PWM
 const int cMinPWM = 150;                                                       // PWM value for minimum speed that turns motor
 const int cMaxPWM = 255;                                       // PWM value for maximum speed
+const int turnTime=1600;
 
-
+// defines pins numbers
+const int trigPin = 9;
+const int echoPin = 10;
+// defines variables
+long duration;
+int distance;
 
 // Variables
 boolean motorsEnabled = true;                                                  // motors enabled flag
@@ -92,8 +98,9 @@ unsigned long timerCount200msec = 0;                                           /
 unsigned long displayTime;                                                     // heartbeat LED update timer
 unsigned long previousMicros;                                                  // last microsecond count
 unsigned long currentMicros;
-
-
+int collectTime;
+int directionMoving;
+int sanitycheck;
 // PID code
 double pwm[]={0,0,0,0};
 float ePrev[] = {0,0,0,0};
@@ -143,8 +150,11 @@ Adafruit_NeoPixel SmartLEDs(NEO_RGB + NEO_KHZ800);
 void setup() {
    #if defined DEBUG_DRIVE_SPEED || DEBUG_ENCODER_COUNT
    Serial.begin(115200);
+   
    #endif
-  
+   pinMode(trigPin, OUTPUT); // Sets the trigPin as an Output
+   pinMode(echoPin, INPUT); // Sets the echoPin as an Input  
+
 
    
   // Set up motors
@@ -163,8 +173,6 @@ void setup() {
    Bot.motorBegin("M2",RIGHT_MOTOR_A,RIGHT_MOTOR_B);
    
 
-  //Bot.driveBegin("D1",LEFT_MOTOR_A,LEFT_MOTOR_B,RIGHT_MOTOR_A,RIGHT_MOTOR_B);
-  //Bot.driveBegin("D2",LEFT_MOTOR_C,LEFT_MOTOR_D,RIGHT_MOTOR_C,RIGHT_MOTOR_D);
 
   
    // Set up encoders
@@ -190,6 +198,23 @@ void loop() {
    LeftEncoderRear.getEncoderRawCount();
    RightEncoderRear.getEncoderRawCount();
 
+
+   digitalWrite(trigPin, LOW);
+   delayMicroseconds(2);
+  // Sets the trigPin on HIGH state for 10 micro seconds
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  // Reads the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+  // Calculating the distance
+  distance = duration * 0.034 / 2;
+  // Prints the distance on the Serial Monitor
+  Serial.print("Distance: ");
+  Serial.println(distance);
+
+  //Bot.driveBegin("D1",LEFT_MOTOR_A,LEFT_MOTOR_B,RIGHT_MOTOR_A,RIGHT_MOTOR_B);
+  //Bot.driveBegin("D2",LEFT_MOTOR_C,LEFT_MOTOR_D,RIGHT_MOTOR_C,RIGHT_MOTOR_D);
    // Set position array to updated values
    // Signs account for directions motors turn as they are on the car
    position[0] = LeftEncoder.lRawEncoderCount;
@@ -210,103 +235,72 @@ void loop() {
       // Rear  M3    M4
 
 
-      if(timerCount3sec + 3000 < millis()){
-         timeUp3sec = true;
-      }
-      if(timerCount200msec + 200<millis()){
-         timeUp200msec = true;
-      }
-
+      /*
+      if(millis()>3000)
+      {
       switch(driveIndex){
 
       case 0:
-      timeUp3sec = false;
-      timerCount3sec = millis();
+      collectTime=millis();
       driveIndex++;
       break;
 
       case 1:
-      Serial.println("forward");
-      botForward();
-      if(timeUp3sec == true){
-         timeUp200msec = false;
-         timerCount200msec = millis();
-         driveIndex++;
-      }
+      botMove("forward",5000,&collectTime);
       break;
 
       case 2:
-      Serial.println("stop");
-      botStop();
-      if(timeUp200msec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
-         driveIndex++;
-      }
+      botMove("right",turnTime,&collectTime);
       break;
 
       case 3:
-      Serial.println("reverse");
-      botReverse();
-      if(timeUp3sec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
-         driveIndex++;
-      }
+      botMove("forward",5000,&collectTime);
       break;
 
       case 4:
-      Serial.println("stop");
-      botStop();
-      if(timeUp3sec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
-         driveIndex++;
-      }
+      botMove("right",turnTime,&collectTime);
       break;
 
       case 5:
-      Serial.println("Left");
-      botLeft();
-      if(timeUp3sec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
-         driveIndex++;
-      }
+      botMove("forward",5000,&collectTime);
       break;
 
       case 6:
-      Serial.println("Stop");
-      botStop();
-      if(timeUp3sec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
-         driveIndex++;
-      }
+      botMove("right",turnTime,&collectTime);
       break;
 
       case 7:
-      Serial.println("right");
-      botRight();
-      if(timeUp3sec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
-         driveIndex++;
-      }
+      botMove("forward",5000,&collectTime);
       break;
 
       case 8:
-      Serial.println("stop");
-      botStop();
-      if(timeUp3sec == true){
-         timeUp3sec = false;
-         timerCount3sec = millis();
-         driveIndex = 0;
-      }
+      botMove("right",turnTime,&collectTime);
       break;
       }
-     
-      
+      }
+     */
+    if (distance>10)
+    {
+      directionMoving=1;
+    }
+    
+      if (directionMoving!=sanitycheck)
+      {
+         collectTime=200+millis();
+      }
+      sanitycheck=directionMoving;
+      if(collectTime>millis())
+      {
+         botStop();
+      }
+      else if(directionMoving==1)
+      {
+         botReverse();
+      }
+      else
+      {
+         botForward();
+      }
       // ALL OF MY FUNCTIONS AT THE BOTTOM WORK ON THEIR OWN
       // ALL MOTORS GO FORWARD AND BACKWARD
       /*
@@ -467,4 +461,40 @@ void botRight(){
       Bot.SetMotorPWMAndDirection("M2",pwm[1],false);
       Bot.SetMotorPWMAndDirection("M3",pwm[2],false);
       Bot.SetMotorPWMAndDirection("M4",pwm[3],false);
+}
+void botMove(char* direction, int seconds, int* relativeTime)
+{
+   if(millis()<*relativeTime+seconds-200)
+   {
+   if(direction=="reverse")
+   {
+      botReverse();
+   }
+   if(direction=="forward")
+   {
+      botForward();
+   }
+   if(direction=="right")
+   {
+      botRight();
+   }
+   if(direction=="left")
+   {
+      botLeft();
+   }
+   if(direction=="stop")
+   {
+      botStop();
+   }
+   }
+   else
+   {
+      botStop();
+   }
+   if(millis()>*relativeTime+seconds)
+   {
+      Serial.printf("hello world");
+         *relativeTime=millis();
+         driveIndex++;
+   }
 }
