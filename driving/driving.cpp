@@ -279,9 +279,18 @@ void loop() {
       }
       }
      */
-    if (distance>10)
+    
+    if (distance>15 )
     {
       directionMoving=1;
+    }
+    else if(distance<10)
+    {
+      directionMoving = -1;
+    }
+    else
+    {
+      directionMoving=0;
     }
     
       if (directionMoving!=sanitycheck)
@@ -289,7 +298,7 @@ void loop() {
          collectTime=200+millis();
       }
       sanitycheck=directionMoving;
-      if(collectTime>millis())
+      if(collectTime>millis()||directionMoving==0)
       {
          botStop();
       }
@@ -301,6 +310,8 @@ void loop() {
       {
          botForward();
       }
+      
+
       // ALL OF MY FUNCTIONS AT THE BOTTOM WORK ON THEIR OWN
       // ALL MOTORS GO FORWARD AND BACKWARD
       /*
