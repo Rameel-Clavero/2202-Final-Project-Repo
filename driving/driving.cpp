@@ -235,7 +235,6 @@ void loop() {
       // Rear  M3    M4
 
 
-      /*
       if(millis()>3000)
       {
       switch(driveIndex){
@@ -278,62 +277,6 @@ void loop() {
       break;
       }
       }
-     */
-    
-    if (distance>15 )
-    {
-      directionMoving=1;
-    }
-    else if(distance<10)
-    {
-      directionMoving = -1;
-    }
-    else
-    {
-      directionMoving=0;
-    }
-    
-      if (directionMoving!=sanitycheck)
-      {
-         collectTime=200+millis();
-      }
-      sanitycheck=directionMoving;
-      if(collectTime>millis()||directionMoving==0)
-      {
-         botStop();
-      }
-      else if(directionMoving==1)
-      {
-         botReverse();
-      }
-      else
-      {
-         botForward();
-      }
-      
-
-      // ALL OF MY FUNCTIONS AT THE BOTTOM WORK ON THEIR OWN
-      // ALL MOTORS GO FORWARD AND BACKWARD
-      /*
-      Bot.SetMotorPWMAndDirection("M1",255,false);
-      delay(5000);
-      Bot.SetMotorPWMAndDirection("M1",255,true);
-      delay(5000);
-      Bot.SetMotorPWMAndDirection("M2",255,true);
-      delay(5000);
-      Bot.SetMotorPWMAndDirection("M2",255,false);
-      delay(5000);
-      Bot.SetMotorPWMAndDirection("M3",255,false);
-      delay(5000);
-      Bot.SetMotorPWMAndDirection("M3",255,true);
-      delay(5000);
-      Bot.SetMotorPWMAndDirection("M4",255,true);
-      delay(5000);
-      Bot.SetMotorPWMAndDirection("M4",255,false);
-      */
-
-      //Serial.printf("speed 0 %f, PWM 0 %f\n",wheelSpeeds[0],pwm[0]);
-      //Serial.printf("speed 1 %f, PWM 1 %f\n\n",wheelSpeeds[1],pwm[1]);
    }
 }
 
