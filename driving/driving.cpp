@@ -1,4 +1,3 @@
-
 //  To program and use ESP32-S3
 //   
 //  Tools->:
@@ -40,7 +39,9 @@ void botStop();
 void botLeft();
 void botRight();
 void botMove(char*,int,int*);
-
+int averageLeft();
+int averageRight();
+void botMotion (int, int, int*, int*);
 // Port pin constants
 #define LEFT_MOTOR_A        35                                                 // GPIO35 pin 28 (J35) Motor 1 A
 #define LEFT_MOTOR_B        36                                                 // GPIO36 pin 29 (J36) Motor 1 B
@@ -80,6 +81,14 @@ const int echoPin = 10;
 // defines variables
 long duration;
 int distance;
+int holdingRightEncoder;
+int holdingLeftEncoder;
+unsigned long currentsecond;
+const int f=0;
+const int l=1;
+const int r=2;
+const int z=3;
+const int turn=1500;
 
 // Variables
 boolean motorsEnabled = true;                                                  // motors enabled flag
@@ -199,7 +208,7 @@ void loop() {
    RightEncoderRear.getEncoderRawCount();
 
 
-   digitalWrite(trigPin, LOW);
+   /*digitalWrite(trigPin, LOW);
    delayMicroseconds(2);
   // Sets the trigPin on HIGH state for 10 micro seconds
   digitalWrite(trigPin, HIGH);
@@ -211,7 +220,7 @@ void loop() {
   distance = duration * 0.034 / 2;
   // Prints the distance on the Serial Monitor
   Serial.print("Distance: ");
-  Serial.println(distance);
+  Serial.println(distance);*/
 
   //Bot.driveBegin("D1",LEFT_MOTOR_A,LEFT_MOTOR_B,RIGHT_MOTOR_A,RIGHT_MOTOR_B);
   //Bot.driveBegin("D2",LEFT_MOTOR_C,LEFT_MOTOR_D,RIGHT_MOTOR_C,RIGHT_MOTOR_D);
@@ -222,10 +231,10 @@ void loop() {
    position[2] = LeftEncoderRear.lRawEncoderCount;
    position[3] = -RightEncoderRear.lRawEncoderCount;
 
-   currentMicros = micros();                                                   // get current time in microseconds
+   /*currentMicros = micros();                                                   // get current time in microseconds
    if ((currentMicros - previousMicros) >= 1000) {                             // enter when 1 ms has elapsed
       previousMicros = currentMicros;                                          // record current time in microseconds
-   }
+   }*/
    // Drive forward using PID
    if (millis() - lastTime > 10) {                // wait ~10 ms
       deltaT = ((float) (millis() - lastTime)) / 1000; // compute actual time interval in seconds
@@ -235,6 +244,35 @@ void loop() {
       // Rear  M3    M4
 
 
+      if(millis()>3000)
+    {
+      switch(driveIndex)
+      {
+
+          case 0:
+            holdingLeftEncoder=averageLeft();
+            holdingRightEncoder=averageRight();
+            driveIndex++;
+            break;
+             
+          case 1:
+            botMotion(f, 15000, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+
+            case 2:
+            botMotion(l, turn, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+
+            case 3:
+            botMotion(r, turn, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+
+            case 4:
+            botMotion(z, 15000, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+    }}
+
+      /*
       if(millis()>3000)
       {
       switch(driveIndex){
@@ -277,6 +315,53 @@ void loop() {
       break;
       }
       }
+     */
+     /*
+    if (distance>10)
+    {
+      directionMoving=1;
+    }
+    
+      if (directionMoving!=sanitycheck)
+      {
+         collectTime=200+millis();
+      }
+      sanitycheck=directionMoving;
+      if(collectTime>millis())
+      {
+         botStop();
+      }
+      else if(directionMoving==1)
+      {
+         botReverse();
+      }
+      else
+      {
+         botForward();
+      }
+      */
+      // ALL OF MY FUNCTIONS AT THE BOTTOM WORK ON THEIR OWN
+      // ALL MOTORS GO FORWARD AND BACKWARD
+      /*
+      Bot.SetMotorPWMAndDirection("M1",255,false);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M1",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M2",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M2",255,false);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M3",255,false);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M3",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M4",255,true);
+      delay(5000);
+      Bot.SetMotorPWMAndDirection("M4",255,false);
+      */
+
+      //Serial.printf("speed 0 %f, PWM 0 %f\n",wheelSpeeds[0],pwm[0]);
+      //Serial.printf("speed 1 %f, PWM 1 %f\n\n",wheelSpeeds[1],pwm[1]);
    }
 }
 
@@ -452,3 +537,110 @@ void botMove(char* direction, int seconds, int* relativeTime)
          driveIndex++;
    }
 }
+int averageLeft()
+{
+  return (position[0]+position[2])/2;
+}
+int averageRight()
+{
+  return (position[1]+position[3])/2;
+}
+
+void botMotion(int direction, int count, int* left, int* right)
+{
+   if(currentsecond==0)
+   {
+  switch (direction)
+  {
+    case r:
+    botRight();
+    Serial.printf("right       Encoder left:%d            Encoder right:%d",averageLeft(),averageRight());
+    currentsecond=0;
+    if(*left+count<=averageLeft()&&*right-count>=averageRight())
+     {
+        currentsecond=millis();
+     }
+     break;
+
+     case f:
+    botForward();
+    currentsecond=0;
+     if(*left+count<=averageLeft()&&*right+count<=averageRight())
+     {
+      currentsecond=millis();
+     }
+     break;
+
+     case z:
+    botReverse();
+    currentsecond=0;
+     if(*left-count>=averageLeft()&&*right-count>=averageRight())
+     {
+      currentsecond=millis();
+     }
+     break;
+
+     case l:
+    botLeft();
+    currentsecond=0;
+     if(*left-count>=averageLeft()&&*right+count<=averageRight())
+     {
+      currentsecond=millis();
+     }
+     break;
+
+  }
+  }
+  else if(currentsecond+200>millis())
+  {
+   botStop();
+   *left=averageLeft();
+   *right=averageRight();
+  }
+  else
+  {
+   currentsecond=0;
+   driveIndex++;
+  }
+}
+  /*if (direction=="right")
+  {
+    botRight();
+     if(*left+count<=averageLeft()&&*right-count>=averageRight())
+     {
+      *left=averageLeft();
+      *right=averageRight();
+      driveIndex++;
+     }
+  }
+  if (direction=="left")
+  {
+    botLeft();
+     if(*left-count>=averageLeft()&&*right+count<=averageRight())
+  {
+      *left=averageLeft();
+      *right=averageRight();
+      driveIndex++;
+  }
+  }
+  if (direction=="forward")
+  {
+    botForward();
+     if(*left+count<=averageLeft()&&*right+count<=averageRight())
+  {
+      *left=averageLeft();
+      *right=averageRight();
+      driveIndex++;
+  }
+  }
+  if (direction=="reverse")
+  {
+    botReverse();
+     if(*left-count>=averageLeft()&&*right-count>=averageRight())
+  {
+      *left=averageLeft();
+      *right=averageRight();
+      driveIndex++;
+  }
+  }
+}*/
