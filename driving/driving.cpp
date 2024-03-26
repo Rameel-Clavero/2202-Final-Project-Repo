@@ -256,7 +256,7 @@ void loop() {
             break;
              
           case 1:
-            botMotion(f, 15000, &holdingLeftEncoder, &holdingRightEncoder);
+            botMotion(f, 20000, &holdingLeftEncoder, &holdingRightEncoder);
             break;
 
             case 2:
@@ -264,11 +264,27 @@ void loop() {
             break;
 
             case 3:
-            botMotion(r, turn, &holdingLeftEncoder, &holdingRightEncoder);
+            botMotion(f, 20000, &holdingLeftEncoder, &holdingRightEncoder);
             break;
 
             case 4:
-            botMotion(z, 15000, &holdingLeftEncoder, &holdingRightEncoder);
+            botMotion(l, turn, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+
+            case 5:
+            botMotion(f, 20000, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+
+            case 6:
+            botMotion(l, turn, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+
+            case 7:
+            botMotion(f, 20000, &holdingLeftEncoder, &holdingRightEncoder);
+            break;
+
+            case 8:
+            botMotion(l, turn, &holdingLeftEncoder, &holdingRightEncoder);
             break;
     }}
 
