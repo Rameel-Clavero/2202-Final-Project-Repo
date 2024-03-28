@@ -8,13 +8,15 @@
 //
 
 #define PRINT_COLOUR                                  // uncomment to turn on output of colour sensor data
+#define leftmotor 35
+#define rightmotor 36
 
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <Wire.h>
 #include <SPI.h>
 #include "Adafruit_TCS34725.h"
-
+#include "MSE2202_Lib.h"
 // Function declarations
 void doHeartbeat();
 
@@ -24,7 +26,7 @@ int red, green, blue, colour;                         //save the measured colour
 int rocks=1;                                          //for switch case
 unsigned long rocktime;                               //the time when the rock is collected
 const int checktime=500;                              //time that colour sensor has to check colour
-const int movetime=500;                               //time servo will move to collect rock
+const int movetime=5000;                               //time servo will move to collect rock
 const int cHeartbeatInterval = 75;                    // heartbeat update interval, in milliseconds
 const int cSmartLED          = 21;                    // when DIP switch S1-4 is on, SMART LED is connected to GPIO21
 const int cSmartLEDCount     = 1;                     // number of Smart LEDs in use
@@ -52,7 +54,7 @@ unsigned long prevMillis     = 0;                     // start time for delay cy
 //     NEO_GRB     Pixels are wired for GRB bitstream (most NeoPixel products)
 //     NEO_RGB     Pixels are wired for RGB bitstream (v1 FLORA pixels, not v2)
 //     NEO_RGBW    Pixels are wired for RGBW bitstream (NeoPixel RGBW products)
-
+Motion Bot=Motion();
 Adafruit_NeoPixel SmartLEDs(cSmartLEDCount, cSmartLED, NEO_RGB + NEO_KHZ800);
 
 // Smart LED brightness for heartbeat
@@ -67,7 +69,7 @@ bool tcsFlag = 0;                                     // TCS34725 flag: 1 = conn
 
 void setup() {
   Serial.begin(115200);                               // Standard baud rate for ESP32 serial monitor
-
+ Bot.driveBegin("D1", leftmotor, rightmotor, 37, 38);
  pinMode(cServoPin, OUTPUT);                      // configure servo GPIO for output
   ledcSetup(cServoChannel, 50, 14);                // setup for channel for 50 Hz, 14-bit resolution
   ledcAttachPin(cServoPin, cServoChannel);         // assign servo pin to servo channel
@@ -105,7 +107,7 @@ void loop() {
 #endif
   }
   doHeartbeat();                                      // update heartbeat LED
-
+  Bot.Reverse("D1",220,220);
 
                                                                 //switch statement base on variable declared earlier
 switch (rocks)
