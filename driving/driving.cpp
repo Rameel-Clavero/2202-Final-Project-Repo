@@ -256,7 +256,7 @@ void loop() {
             break;
              
           case 1:
-            botMotion(f, 20000, &holdingLeftEncoder, &holdingRightEncoder);
+            botMotion(f, 100000000, &holdingLeftEncoder, &holdingRightEncoder);
             break;
 
             case 2:
