@@ -50,6 +50,7 @@ const int cServoChannel      = 5;                  // PWM channel used for the R
 
 // Variables
 boolean heartbeatState       = true;                  // state of heartbeat LED
+boolean stopped = false;
 unsigned long lastHeartbeat  = 0;                     // time of last heartbeat state change
 unsigned long curMillis      = 0;                     // current time, in milliseconds
 unsigned long prevMillis     = 0;                     // start time for delay cycle, in milliseconds
@@ -76,7 +77,7 @@ const float ki = 2;                                // integral gain for PID
 const float kd = 0.2;                              // derivative gain for PID
 
 // Change to adjust target speed
-long targetSpeed = 377;    // TARGET SPEED
+long targetSpeed = 432;    // TARGET SPEED
 
 
 
@@ -137,16 +138,37 @@ void setup() {
     tcsFlag = false;
   }
 }
+/*
+if (millis()>3000&&stopped==true&&wheelCorrect+500>millis())
+  {
 
+    Bot.Forward("D1",255,255);
+  }
+  
+  else if (millis() - lastTime > 10) {                // wait ~10 ms
+      
+      if(wheelSpeeds=!0)
+      {
+          wheelCorrect=millis();
+          stopped=false;
+      }
+      else if(wheelSpeeds==0&&wheelCorrect+500<millis())
+      {
+          stopped=true;
+          wheelCorrect=millis();
+      }
+*/
 void loop() {
   
   //PID Code
   // To change target speed, change the target value at the top of the code
-  if (millis()>3000&&wheelSpeeds==0&&wheelCorrect+500>millis())
+  if (millis()>3000&&stopped==true&&wheelCorrect+500>millis())
   {
     Bot.Forward("D1",255,255);
+     Serial.println("backwards");
   }
   else if (millis() - lastTime > 10) {                // wait ~10 ms
+    
       wheelCorrect=millis();
       deltaT = ((float) (millis() - lastTime)) / 1000; // compute actual time interval in seconds
       lastTime = millis();                            // update start time for next control cycle
@@ -159,6 +181,18 @@ void loop() {
       Bot.Reverse("D1",pwm,pwm);
       Serial.printf("pwm %d\n",pwm);
       Serial.printf("speed is %d\n",wheelSpeeds);
+      if(wheelSpeeds>10)
+      {
+        Serial.println("nothing");
+          wheelCorrect=millis();
+          stopped=false;
+      }
+      else if(wheelCorrect+500<millis())
+      {
+         Serial.println("Stopped");
+          stopped=true;
+          wheelCorrect=millis();
+      }
   }
   
   uint16_t r, g, b, c;                                // RGBC values from TCS34725
@@ -328,8 +362,8 @@ void calculatePID(long targetSpeed,float deltaT){
 
    Serial.println(e);
    // Set cap for integral
-   if(eIntegral > 200){
-      eIntegral = 200;
+   if(eIntegral > 326){
+      eIntegral = 326;
    }
    Serial.println(e);
    Serial.printf("int %f dedt %f e %f eprev %d\n",eIntegral,dedt,e,ePrev);
