@@ -35,6 +35,7 @@ int timer=0;
 unsigned long rocktime;                               //the time when the rock is collected
 const int checktime=900;                              //time that colour sensor has to check colour
 const int movetime=750;                               //time servo will move to collect rock
+unsigned long wheelCorrect=0;
 const int cHeartbeatInterval = 75;                    // heartbeat update interval, in milliseconds
 const int cSmartLED          = 21;                    // when DIP switch S1-4 is on, SMART LED is connected to GPIO21
 const int cSmartLEDCount     = 1;                     // number of Smart LEDs in use
@@ -43,7 +44,7 @@ const int cSCL               = 48;                    // GPIO pin for I2C clock
 const int cTCSLED            = 14;                    // GPIO pin for LED on TCS34725
 const int cLEDSwitch         = 46;                    // DIP switch S1-2 controls LED on TCS32725  
 int servoPos;                                      // desired servo angle
-const int cServoPin          = 45;                 // GPIO pin for servo motor
+const int cServoPin          = 5;                 // GPIO pin for servo motor
 const int cServoChannel      = 5;                  // PWM channel used for the RC servo motor
 
 
@@ -75,7 +76,7 @@ const float ki = 2;                                // integral gain for PID
 const float kd = 0.2;                              // derivative gain for PID
 
 // Change to adjust target speed
-long targetSpeed = 1200;    // TARGET SPEED
+long targetSpeed = 377;    // TARGET SPEED
 
 
 
@@ -107,9 +108,13 @@ void setup() {
   Bot.driveBegin("D1", leftmotor, rightmotor, 37, 38);
   Encoder.Begin(ENCODER_LEFT_A, ENCODER_LEFT_B, &Bot.iLeftMotorRunning);
 
- pinMode(cServoPin, OUTPUT);                      // configure servo GPIO for output
-  ledcSetup(cServoChannel, 50, 14);                // setup for channel for 50 Hz, 14-bit resolution
-  ledcAttachPin(cServoPin, cServoChannel);         // assign servo pin to servo channel
+
+
+ //pinMode(cServoPin, OUTPUT);                      // configure servo GPIO for output
+  //ledcSetup(7, 50, 14);                // setup for channel for 50 Hz, 14-bit resolution
+  //ledcAttachPin(cServoPin, 7);         // assign servo pin to servo channel
+
+  Bot.servoBegin("S1",7);
 
   // Set up SmartLED
   SmartLEDs.begin();                                  // initialize smart LEDs object
@@ -134,19 +139,28 @@ void setup() {
 }
 
 void loop() {
+  
   //PID Code
   // To change target speed, change the target value at the top of the code
-  if (millis() - lastTime > 10) {                // wait ~10 ms
+  if (millis()>3000&&wheelSpeeds==0&&wheelCorrect+500>millis())
+  {
+    Bot.Forward("D1",255,255);
+  }
+  else if (millis() - lastTime > 10) {                // wait ~10 ms
+      wheelCorrect=millis();
       deltaT = ((float) (millis() - lastTime)) / 1000; // compute actual time interval in seconds
       lastTime = millis();                            // update start time for next control cycle
-      deltaT = 0;
+      
       // Update the values for all encoders
       Encoder.getEncoderRawCount();
       position = Encoder.lRawEncoderCount;
       calculateSpeed();
       calculatePID(targetSpeed,deltaT);
       Bot.Reverse("D1",pwm,pwm);
+      Serial.printf("pwm %d\n",pwm);
+      Serial.printf("speed is %d\n",wheelSpeeds);
   }
+  
   uint16_t r, g, b, c;                                // RGBC values from TCS34725
   
   digitalWrite(cTCSLED, !digitalRead(cLEDSwitch));    // turn on onboard LED if switch state is low (on position)
@@ -226,6 +240,7 @@ case 4:
 if (rarity=="good")                                           
 {
   servoPos = map(3500, 0, 4095, 0, 180);                      //setting servo to move rock to good pile
+  //Serial.println("rock is good");
 }
 if(rarity=="bad")
 {
@@ -242,7 +257,10 @@ if (millis()>rocktime+movetime)                               //time servo will 
 break;
 }
 
-  ledcWrite(cServoChannel, degreesToDutyCycle(servoPos)); // set the desired servo positio 
+  //Serial.printf("servo pos %d\n",degreesToDutyCycle(servoPos));
+
+  Bot.ToPosition("S1",(int)degreesToDutyCycle(servoPos));
+  //ledcWrite(7, degreesToDutyCycle(servoPos)); // set the desired servo position
 } 
 // update heartbeat LED
 void doHeartbeat() {
@@ -300,19 +318,21 @@ void calculatePID(long targetSpeed,float deltaT){
    float e = 0;
    float dedt = 0;
    float u = 0;                                     // PID control signal
-   
+
+   Serial.println(e);
    e = targetSpeed - wheelSpeeds;                              // position error
-   // Reverse the error while driving backwards so motors dont stop
-      if(targetSpeed < 0){
-      targetSpeed = targetSpeed*-1;
-      e = e*-1;
-   }
+   Serial.println(e);
+
    dedt = ((float) e - ePrev) / deltaT;           // derivative of error
    eIntegral += e * deltaT;            // integral of error (finite difference)
+
+   Serial.println(e);
    // Set cap for integral
-   if(eIntegral > 800){
-      eIntegral = 800;
+   if(eIntegral > 200){
+      eIntegral = 200;
    }
+   Serial.println(e);
+   Serial.printf("int %f dedt %f e %f eprev %d\n",eIntegral,dedt,e,ePrev);
    u = kp * e + kd * dedt + ki * eIntegral;       // compute PID-based control signal
    ePrev = e;                                     // store error for next control cycle
 
