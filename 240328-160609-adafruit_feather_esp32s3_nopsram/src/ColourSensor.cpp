@@ -1,10 +1,10 @@
-// 
+//
 // MSE 2202 TCS34725 colour sensor example
-// 
+//
 //  Language: Arduino (C++)
 //  Target:   ESP32-S3
 //  Author:   Michael Naish
-//  Date:     2024 03 05 
+//  Date:     2024 03 05
 //
 
 #define PRINT_COLOUR                                  // uncomment to turn on output of colour sensor data
@@ -85,7 +85,7 @@ long targetSpeed = 500;    // TARGET SPEED
 
 // Declare SK6812 SMART LED object
 //   Argument 1 = Number of LEDs (pixels) in use
-//   Argument 2 = ESP32 pin number 
+//   Argument 2 = ESP32 pin number
 //   Argument 3 = Pixel type flags, add together as needed:
 //     NEO_KHZ800  800 KHz bitstream (most NeoPixel products w/WS2812 LEDs)
 //     NEO_KHZ400  400 KHz (classic 'v1' (not v2) FLORA pixels, WS2811 drivers)
@@ -97,8 +97,8 @@ Encoders Encoder = Encoders();
 Adafruit_NeoPixel SmartLEDs(cSmartLEDCount, cSmartLED, NEO_RGB + NEO_KHZ800);
 
 // Smart LED brightness for heartbeat
-unsigned char LEDBrightnessIndex = 0; 
-unsigned char LEDBrightnessLevels[] = {0, 0, 0, 5, 15, 30, 45, 60, 75, 90, 105, 120, 135, 
+unsigned char LEDBrightnessIndex = 0;
+unsigned char LEDBrightnessLevels[] = {0, 0, 0, 5, 15, 30, 45, 60, 75, 90, 105, 120, 135,
                                        150, 135, 120, 105, 90, 75, 60, 45, 30, 15, 5, 0};
 
 // TCS34725 colour sensor with 2.4 ms integration time and gain of 4
@@ -129,13 +129,13 @@ void setup() {
 
   Wire.setPins(cSDA, cSCL);                           // set I2C pins for TCS34725
   pinMode(cTCSLED, OUTPUT);                           // configure GPIO to control LED on TCS34725
-  pinMode(cLEDSwitch, INPUT_PULLUP);                  // configure GPIO to set state of TCS34725 LED 
+  pinMode(cLEDSwitch, INPUT_PULLUP);                  // configure GPIO to set state of TCS34725 LED
 
   // Connect to TCS34725 colour sensor
   if (tcs.begin()) {
     Serial.printf("Found TCS34725 colour sensor\n");
     tcsFlag = true;
-  } 
+  }
   else {
     Serial.printf("No TCS34725 found ... check your connections\n");
     tcsFlag = false;
@@ -143,28 +143,23 @@ void setup() {
 }
 
 void loop() {
-  Serial.printf("%d",digitalRead(13));
-  //PID Code
+
+  //PID Code, adjsusts the power (PWM) sent to the wheel, increasing or decreasing power depeding on if wheel is slower or faster than desired.
   // To change target speed, change the target value at the top of the code
+
+  //If the wheel is stopped for 3 seconds, move the wheel in a direction which pushes rocks away, clearing blockage.
   if (millis()>3000&&stopped==true&&wheelCorrect+250>millis())
   {
     Bot.Forward("D1",255,255);
-     
-
-      SmartLEDs.setBrightness(LEDBrightnessLevels[255]); // set brightness of heartbeat LED
-      SmartLEDs.setPixelColor(0, SmartLEDs.Color(0, 250, 0)); // set pixel colours to green
-      SmartLEDs.show();                                 // update LED
+     Serial.println("backwards");
   }
+  //Waits for 10 ms before calculating how much the wheels needs to be corrected.
   else if (millis() - lastTime > 10) {                // wait ~10 ms
 
-      SmartLEDs.setBrightness(LEDBrightnessLevels[255]); // set brightness of heartbeat LED
-      SmartLEDs.setPixelColor(0, SmartLEDs.Color(255, 0, 0)); // set pixel colours to green
-      SmartLEDs.show();                                 // update LED
-    
       wheelCorrect=millis();
       deltaT = ((float) (millis() - lastTime)) / 1000; // compute actual time interval in seconds
       lastTime = millis();                            // update start time for next control cycle
-      
+
       // Update the values for all encoders
       Encoder.getEncoderRawCount();
       position = Encoder.lRawEncoderCount;
@@ -181,13 +176,14 @@ void loop() {
       }
      
   }
-  
+
   uint16_t r, g, b, c;                                // RGBC values from TCS34725
-  
+
+  //Activates Colour Sensor
   digitalWrite(cTCSLED, !digitalRead(cLEDSwitch));    // turn on onboard LED if switch state is low (on position)
   if (tcsFlag) {                                      // if colour sensor initialized
     tcs.getRawData(&r, &g, &b, &c);                   // get raw RGBC values
-#ifdef PRINT_COLOUR            
+#ifdef PRINT_COLOUR
       Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
 #endif
   }
@@ -252,7 +248,7 @@ if(millis()-rocktime>checktime)                               //seeing if enough
 }
 if ((b>g&&b-g>tolerance)||(r>g&&r-g>tolerance)||c>110||((c<87||c>95)&&(b>=g||r>=g)))                                   //cheking if rock is undesired
 {
-  rarity="bad";                                               //setting rock variable equal to bad                                          
+  rarity="bad";                                               //setting rock variable equal to bad
 }
 else if(g>b&&g>r)                                             //checking if rock is good
 {
@@ -266,7 +262,7 @@ break;
 
 case 5:
 //these if statements check the rarity of the rock and move servo towards the bad or good pile depending on the result
-if (rarity=="good")                                           
+if (rarity=="good")
 {
   servoPos = map(3500, 0, 4095, 0, 180);                      //setting servo to move rock to good pile
   Bot.ToPosition("S2",(int)degreesToDutyCycle(map(3500, 0, 4095, 0, 180)));
@@ -289,7 +285,7 @@ break;
 }
 Bot.ToPosition("S1",(int)degreesToDutyCycle(servoPos));
   //ledcWrite(7, degreesToDutyCycle(servoPos)); // set the desired servo position
-} 
+}
 // update heartbeat LED
 void doHeartbeat() {
   curMillis = millis();                               // get the current time in milliseconds
@@ -323,20 +319,20 @@ long degreesToDutyCycle(int deg) {
 void calculateSpeed() {
     unsigned long currentTime = millis(); // Current time in milliseconds
     static unsigned long lastSpeedCalculation = 0; // Last time we calculated speed
-    
+
     // Calculate elapsed time since last speed calculation in seconds
     float elapsedTime = (currentTime - lastSpeedCalculation) / 1000.0; // Convert milliseconds to seconds
 
     if (elapsedTime >= 0.1) { // Only calculate if at least 100 ms have passed to avoid division by a very small number
-        
+
             // Calculate speed as change in encoder counts divided by elapsed time
             // Speed could be in counts per second or any other relevant unit
             wheelSpeeds = (position - previousEncoderCounts) / elapsedTime;
-            
+
             // Update previousEncoderCounts for next calculation
             previousEncoderCounts = position;
-        
-        
+
+
         // Update the last speed calculation time
         lastSpeedCalculation = currentTime;
     }
@@ -368,7 +364,7 @@ void calculatePID(long targetSpeed,float deltaT){
 
    int pwmSignal = map(u, -cMaxSpeedInCounts, cMaxSpeedInCounts, 0, 255); // Assuming symmetric control range for simplification
    pwmSignal = constrain(pwmSignal, 0, 255); // Ensure PWM signal stays within valid range
-   //Serial.printf("Motor number %d, error %f, pwm %d\n",motorNumber,e,pwmSignal); 
+   //Serial.printf("Motor number %d, error %f, pwm %d\n",motorNumber,e,pwmSignal);
    pwm = pwmSignal; // Apply the computed PWM value
    //Serial.printf("PWM has been set to %f\n",pwm[motorNumber]);
 }
