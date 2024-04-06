@@ -32,8 +32,9 @@ char* rarity;                                         //to store if rock is good
 int red, green, blue, colour;                         //save the measured colour values
 int rocks=1;                                          //for switch case
 int timer=0;
+int timerColour;
 unsigned long rocktime;                               //the time when the rock is collected
-const int checktime=900;                              //time that colour sensor has to check colour
+const int checktime=1200;                              //time that colour sensor has to check colour
 const int movetime=750;                               //time servo will move to collect rock
 unsigned long wheelCorrect=0;
 const int cHeartbeatInterval = 75;                    // heartbeat update interval, in milliseconds
@@ -43,10 +44,11 @@ const int cSDA               = 47;                    // GPIO pin for I2C data
 const int cSCL               = 48;                    // GPIO pin for I2C clock
 const int cTCSLED            = 14;                    // GPIO pin for LED on TCS34725
 const int cLEDSwitch         = 46;                    // DIP switch S1-2 controls LED on TCS32725  
+const int tolerance=5;
 int servoPos;                                      // desired servo angle
 const int cServoPin          = 5;                 // GPIO pin for servo motor
 const int cServoChannel      = 5;                  // PWM channel used for the RC servo motor
-
+boolean phase=false;
 
 // Variables
 boolean heartbeatState       = true;                  // state of heartbeat LED
@@ -66,7 +68,7 @@ float deltaT = 0;
 double pwm=0;
 float ePrev = 0;
 float eIntegral = 0;
-
+boolean rockstar=false;
 const int cPWMFreq = 20000;                        // frequency of PWM signal
 const int cCountsRev = 1096;                       // encoder pulses per motor revolution
 const int cMaxSpeedInCounts = 1600;                // maximum encoder counts/sec
@@ -77,7 +79,7 @@ const float ki = 2;                                // integral gain for PID
 const float kd = 0.2;                              // derivative gain for PID
 
 // Change to adjust target speed
-long targetSpeed = 432;    // TARGET SPEED
+long targetSpeed = 500;    // TARGET SPEED
 
 
 
@@ -109,14 +111,15 @@ void setup() {
   Bot.driveBegin("D1", leftmotor, rightmotor, 37, 38);
   Encoder.Begin(ENCODER_LEFT_A, ENCODER_LEFT_B, &Bot.iLeftMotorRunning);
 
-
+  pinMode(13,INPUT_PULLDOWN);
 
  //pinMode(cServoPin, OUTPUT);                      // configure servo GPIO for output
   //ledcSetup(7, 50, 14);                // setup for channel for 50 Hz, 14-bit resolution
   //ledcAttachPin(cServoPin, 7);         // assign servo pin to servo channel
 
   Bot.servoBegin("S1",7);
-
+  Bot.servoBegin("S2",17);
+  Bot.servoBegin("S3",8);
   // Set up SmartLED
   SmartLEDs.begin();                                  // initialize smart LEDs object
   SmartLEDs.clear();                                  // clear pixel
@@ -138,36 +141,25 @@ void setup() {
     tcsFlag = false;
   }
 }
-/*
-if (millis()>3000&&stopped==true&&wheelCorrect+500>millis())
-  {
 
-    Bot.Forward("D1",255,255);
-  }
-  
-  else if (millis() - lastTime > 10) {                // wait ~10 ms
-      
-      if(wheelSpeeds=!0)
-      {
-          wheelCorrect=millis();
-          stopped=false;
-      }
-      else if(wheelSpeeds==0&&wheelCorrect+500<millis())
-      {
-          stopped=true;
-          wheelCorrect=millis();
-      }
-*/
 void loop() {
-  
+  Serial.printf("%d",digitalRead(13));
   //PID Code
   // To change target speed, change the target value at the top of the code
-  if (millis()>3000&&stopped==true&&wheelCorrect+500>millis())
+  if (millis()>3000&&stopped==true&&wheelCorrect+250>millis())
   {
     Bot.Forward("D1",255,255);
-     Serial.println("backwards");
+     
+
+      SmartLEDs.setBrightness(LEDBrightnessLevels[255]); // set brightness of heartbeat LED
+      SmartLEDs.setPixelColor(0, SmartLEDs.Color(0, 250, 0)); // set pixel colours to green
+      SmartLEDs.show();                                 // update LED
   }
   else if (millis() - lastTime > 10) {                // wait ~10 ms
+
+      SmartLEDs.setBrightness(LEDBrightnessLevels[255]); // set brightness of heartbeat LED
+      SmartLEDs.setPixelColor(0, SmartLEDs.Color(255, 0, 0)); // set pixel colours to green
+      SmartLEDs.show();                                 // update LED
     
       wheelCorrect=millis();
       deltaT = ((float) (millis() - lastTime)) / 1000; // compute actual time interval in seconds
@@ -179,20 +171,15 @@ void loop() {
       calculateSpeed();
       calculatePID(targetSpeed,deltaT);
       Bot.Reverse("D1",pwm,pwm);
-      Serial.printf("pwm %d\n",pwm);
-      Serial.printf("speed is %d\n",wheelSpeeds);
-      if(wheelSpeeds>10)
+      
+      stopped=false;
+      if(wheelSpeeds<20&&wheelSpeeds>-10)
       {
-        Serial.println("nothing");
+        
           wheelCorrect=millis();
-          stopped=false;
-      }
-      else if(wheelCorrect+500<millis())
-      {
-         Serial.println("Stopped");
           stopped=true;
-          wheelCorrect=millis();
       }
+     
   }
   
   uint16_t r, g, b, c;                                // RGBC values from TCS34725
@@ -204,58 +191,66 @@ void loop() {
       Serial.printf("R: %d, G: %d, B: %d, C %d\n", r, g, b, c);
 #endif
   }
-  doHeartbeat();                                      // update heartbeat LED
-  /*
-  switch(timer)
-  {
-    case 0:
-    timerTime=millis();
-    timer++;
-    break;
-
-    case 1:
-    Bot.Reverse("D1",170,170);
-    if (timerTime+500<millis())
-    {
-      timer++;
-      timerTime=millis();
-    }
-    break;
-
-    case 2:
-    Bot.Reverse("D1",140 ,140);
-    if (timerTime+1500<millis())
-    {
-      timer=1;
-    }
-    break;
-  }
-  */
-
-
+ 
+if (digitalRead(13)==1)
+{
+  Bot.ToPosition("S3",(int)degreesToDutyCycle(map(0, 0, 4095, 0, 180)));
+}
+else
+{
+    Bot.ToPosition("S3",(int)degreesToDutyCycle(map(2300, 0, 4095, 0, 180)));
+}
                                                                 //switch statement base on variable declared earlier
 switch (rocks)
 {
+
 case 1:
-servoPos = map(2047.5, 0, 4095, 0, 180);                       //servo positioned to the middle to hold rocks for colour sensor
-if(c>210||c<160||b-r>10||g-r>10)                              //checking if there is a rock by colour sensor
-{
-  rocks=2;                                                    //exiting case 1
-}
+rocktime=millis();
+timerColour=millis();
+rocks++;
 break;
 
 case 2:
-rocktime=millis();                                            //collecting the time that the rock was collected
-rocks=3;                                                      //exiting case 2
+servoPos = map(2047.5, 0, 4095, 0, 180);                       //servo positioned to the middle to hold rocks for colour sensor
+if (millis()>timerColour+8500)
+{
+  timerColour=millis();
+}
+if((millis()>timerColour+8000)&&millis()<timerColour+8500)
+{
+  rockstar=true;
+  rocktime=millis();
+}
+else
+{
+  rockstar=false;
+}
+if (rockstar==true)
+{
+  Bot.ToPosition("S2",(int)degreesToDutyCycle(map(1600, 0, 4095, 0, 180)));
+}
+else if((c>110||c<87||b-r>tolerance||g-r>tolerance||g-b>tolerance||b-g>tolerance||r-b>tolerance||r-g>tolerance)&&rocktime<millis()-800)                              //checking if there is a rock by colour sensor
+{
+  rocks++;                                                    //exiting case 1
+}
+if(rockstar==false)
+{
+  Bot.ToPosition("S2",(int)degreesToDutyCycle(map(0, 0, 4095, 0, 180)));
+}
 break;
 
 case 3:
+rocktime=millis();                                            //collecting the time that the rock was collected
+rocks++;                                                      //exiting case 2
+break;
+
+case 4:
 if(millis()-rocktime>checktime)                               //seeing if enough time has passed
 {
-  rocks=4;                                                    //exiting case 3
+  rocks++;                                                    //exiting case 3
   rocktime =millis();
 }
-if (b>g||r>g||c>200||c<120)                                   //cheking if rock is undesired
+if ((b>g&&b-g>tolerance)||(r>g&&r-g>tolerance)||c>110||((c<87||c>95)&&(b>=g||r>=g)))                                   //cheking if rock is undesired
 {
   rarity="bad";                                               //setting rock variable equal to bad                                          
 }
@@ -269,16 +264,18 @@ else
 }
 break;
 
-case 4:
+case 5:
 //these if statements check the rarity of the rock and move servo towards the bad or good pile depending on the result
 if (rarity=="good")                                           
 {
   servoPos = map(3500, 0, 4095, 0, 180);                      //setting servo to move rock to good pile
-  //Serial.println("rock is good");
+  Bot.ToPosition("S2",(int)degreesToDutyCycle(map(3500, 0, 4095, 0, 180)));
+  
 }
 if(rarity=="bad")
 {
   servoPos = map(500, 0, 4095, 0, 180);                       //setting servo to move rock to bad pile
+  Bot.ToPosition("S2",(int)degreesToDutyCycle(map(3500, 0, 4095, 0, 180)));
 }
 if(rarity=="mid")
 {
@@ -290,10 +287,7 @@ if (millis()>rocktime+movetime)                               //time servo will 
 }
 break;
 }
-
-  //Serial.printf("servo pos %d\n",degreesToDutyCycle(servoPos));
-
-  Bot.ToPosition("S1",(int)degreesToDutyCycle(servoPos));
+Bot.ToPosition("S1",(int)degreesToDutyCycle(servoPos));
   //ledcWrite(7, degreesToDutyCycle(servoPos)); // set the desired servo position
 } 
 // update heartbeat LED
@@ -353,24 +347,24 @@ void calculatePID(long targetSpeed,float deltaT){
    float dedt = 0;
    float u = 0;                                     // PID control signal
 
-   Serial.println(e);
+   
    e = targetSpeed - wheelSpeeds;                              // position error
-   Serial.println(e);
+   
 
    dedt = ((float) e - ePrev) / deltaT;           // derivative of error
    eIntegral += e * deltaT;            // integral of error (finite difference)
 
-   Serial.println(e);
+   
    // Set cap for integral
    if(eIntegral > 326){
       eIntegral = 326;
    }
-   Serial.println(e);
-   Serial.printf("int %f dedt %f e %f eprev %d\n",eIntegral,dedt,e,ePrev);
+   
+   
    u = kp * e + kd * dedt + ki * eIntegral;       // compute PID-based control signal
    ePrev = e;                                     // store error for next control cycle
 
-//Serial.printf("integral = %d, u = %f, e = %d, dedt = %f\n",eIntegral[motorNumber], u, e, dedt);
+
 
    int pwmSignal = map(u, -cMaxSpeedInCounts, cMaxSpeedInCounts, 0, 255); // Assuming symmetric control range for simplification
    pwmSignal = constrain(pwmSignal, 0, 255); // Ensure PWM signal stays within valid range
